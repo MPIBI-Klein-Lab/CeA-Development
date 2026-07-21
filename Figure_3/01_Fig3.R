@@ -8,20 +8,18 @@ library(cowplot)
 library(dplyr)
 library(rlang)
 library(pheatmap)
+#source("~/Documents/backup_mac20250207/Dev_manuscript/fig.4/Final2025.MN.TimeSeries.source.R")
 
-source("~/Documents/backup_mac20250207/Dev_manuscript/fig.4/Final2025.MN.TimeSeries.source.R")
-
-
-########################################################## For establishment of MetaNeighbor method for trajectory preditoion please refer to the other file.
-########################################################## For detailed usage of prediction related functions please refre to the source file
+########################################################## For establishment of MetaNeighbor method for trajectory preditoion please refer to '02_Metaneighbor.Trajectory.Decoding.R'
+########################################################## For detailed usage of decoding related functions please refer to the source file 'MetaNeighbor.TimeSeries.source.R'
 ########################################################## Fig. 3C
 ### read mean dAUROC value
-dAUROC.2025.final.new <- read.csv("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/dAUROC.481GeneSets.mean.csv", row.names = 1,
+dAUROC.2025.final.new <- read.csv("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/Table4.dAUROC.Trajecory.csv", row.names = 1,
                                   check.names = FALSE)
 
 ### read manually curated gene family names
 library(readxl)
-manual.curated <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/Final2025.Families.axon.synapse.Rinput.xlsx")
+manual.curated <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/Manually.Curated.Rinput.xlsx")
 manual.curated <- lapply(manual.curated, as.character)
 names(manual.curated) <- make.names(names(manual.curated))
 manual.curated <- lapply(manual.curated, function(x) x[!is.na(x)])
@@ -79,7 +77,7 @@ pheatmap(dAUROC.2025.final.new,
 
 ########################################################## Prepare data for expression plots ######################################################## 
 ### read CeA development dataset
-se.data.all <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/Seurat.pseudotime.tree.0301.rds")
+se.data.all <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.1/CeA.dev.rds")
 ### SCT normalization
 se.data.list <- SplitObject(se.data.all, split.by = "batch")
 se.data.list <- lapply(X = se.data.list, FUN = function(x) {
@@ -97,12 +95,12 @@ se.data.sct$segments.simple <- factor(se.data.sct$segments.simple, levels = c("P
 
 
 ##################################################### HEATMAP gene expression summary (Fig. 3D related) ######################################################## 
-### Aggregate expresion for heatmap plots 
+### Aggregate expression for heatmap  
 DefaultAssay(se.data.sct) <- "SCT"
 agg.sct <- AggregateExpression(se.data.sct, assays = "SCT", group.by = c("segments.simple", "stage"), return.seurat = T)
 agg.sct$segments.simple <- factor(agg.sct$segments.simple, levels = c("P-app", "CeL-appetitive", "CeM-appetitive", 
                                                                       "P-ave", "CeC/L-aversive", "CeM-aversive"))
-### Heatmap
+### Gene expression heatmap
 DoHeatmap(agg.sct, 
           slot = "scale.data",
           draw.lines = FALSE,
@@ -140,23 +138,18 @@ P10 <- subset(se.data.sct.subset, stage == "P10")
 P4.P10 <- subset(se.data.sct.subset, stage%in% c("P4", "P10"))
 
 ### Axon guidance -- Supplementary Fig.6D
-
 VlnPlot(P4.P10, assay = "SCT", layer = "data",
         features = c("Sema3a", "Sema6a", "Sema3c", "Sema5a","Sema3e",
                      "Plxna4","Plxna2","Plxnd1", "Plxna3","Nrp2", "Nrp1"), 
         group.by = "segments.simple", stack = T, fill.by = "ident", cols =  c("#377EB8", "#377EB8",  "#E41A1C", "#E41A1C"), flip=TRUE)
 
 ### Transcriptional factors -- Supplementary Fig.6E
-
 VlnPlot(P4, assay = "SCT", layer = "data",
         features = c("Pou3f3","Isl1", "Dlx6", "Sox4","Klf7", "Sox2", "Sox5"), 
         group.by = "segments.simple", stack = T, fill.by = "ident", cols =  c("#377EB8", "#377EB8",  "#E41A1C", "#E41A1C"), flip=TRUE)
-
-
 VlnPlot(P0, assay = "SCT", layer = "data",
         features = c("Pou3f3", "Isl1", "Dlx6", "Sox4","Klf7", "Sox2", "Sox5"), 
         group.by = "segments.simple", stack = T, fill.by = "ident", cols =  c("#377EB8", "#377EB8",  "#E41A1C", "#E41A1C"), flip=TRUE)
-
 VlnPlot(P10, assay = "SCT", layer = "data",
         features = c("Pou3f3","Isl1", "Dlx6","Sox4", "Klf7", "Sox2", "Sox5"), 
         group.by = "segments.simple", stack = T, fill.by = "ident", cols =  c("#377EB8", "#377EB8",  "#E41A1C", "#E41A1C"), flip=TRUE)
@@ -164,9 +157,8 @@ VlnPlot(P10, assay = "SCT", layer = "data",
 
 
 ######################################################## Density plots ######################################################## 
-library(Nebulosa)
-### Fig. 3E
-plot_density(se.data.all, features = c("Sema3a", "Sema6a", "Sema3c", "Sema5a", "Sema3e"))
+#library(Nebulosa)
+#plot_density(se.data.all, features = c("Sema3a", "Sema6a", "Sema3c", "Sema5a", "Sema3e"))
 
 ######################################################## Regulon plots (Chao) ######################################################## 
 

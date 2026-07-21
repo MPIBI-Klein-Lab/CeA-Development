@@ -1,5 +1,6 @@
 library(Seurat)
 library(ggplot2)
+library(ggrepel)
 library(dplyr)
 library(harmony)
 library(pheatmap)
@@ -12,16 +13,17 @@ library(SingleCellExperiment)
 library(tidyverse)
 
 ################################################################## Mapping of human-mouse adult cell types -- Supplementary Fig.12D
-### loading data
-cca.se.fin <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/cleaned.cca.Human.Mouse.Integrated.rds")
+### load human-mouse integrated dataset
+cca.se.fin <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Human.MouseAdult.Integrated.rds")
 
+### integrated.clusters: human-mouse shared clusters
 cca.se.fin$integrated.clusters <- cca.se.fin$cca.resolution0.8.number
 Idents(cca.se.fin) <- cca.se.fin$integrated.clusters
-
+### visualization of clustering result
 DimPlot(cca.se.fin,  label = F, pt.size = 0.5, group.by = "species", alpha = 0.5, cols = c("#D8B365", "#35978F"), label.size = 20)
 DimPlot(cca.se.fin,  label = F, pt.size = 0.5, group.by = "integrated.clusters", label.size = 20)
 
-################################################################## Mapping of human-mouse adult cell types -- Fig.6A
+################################################################## Analysis of human-mouse cell type associations -- Fig.6A
 ### integrated.clusters: human-mouse shared clusters
 ### human.clean.cluster.final: human cluster numbers
 ### adult.annotation.new: adult mouse CeA annotations
@@ -160,9 +162,10 @@ pheatmap(threshold.matrix,
 
 ################################################################## Human CeA consensus types -- Fig.6B-C, Suplementary Fig.12 A-C
 ### loading human annotated dataset
-human.se <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/clean.human.se.consensus.rds")
-
+human.se <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Human.CeA.consensus.rds")
 DimPlot(human.se, label = T, pt.size = 0.5, label.size = 10, repel = T, group.by = "human.clean.cluster.final")
+
+### Inspection of consensus cell type annotation
 DimPlot(human.se, group.by = "human.mouse.consensus", alpha = 0.7, pt.size = 0.5, label = F, label.size = 7, repel = T,
         cols = c("#F4CAE4", "#B3E2CD","#FFF2AE", "#E41A1C", "#377EB8","#E6F5C9","#FDCDAC","gray90","gray90","gray90","gray90","gray90","gray90","gray90","gray90"))
 
@@ -246,22 +249,22 @@ FeaturePlot(human.se, features = "PDE1C", cols = c("#FAEE85", "firebrick4"),
 )
 
 #### DE expression heatmap
-human.se$human.clean.cluster.final <- factor(human.se$human.clean.cluster.final, levels = c("7", "2", "22", "19", "20", "9", "12", "8", "11", "24", "18", "3", "15", "17", "14", "21", "6", "10", "13", "23", "0", "1", "5", "4", "16"))
+#human.se$human.clean.cluster.final <- factor(human.se$human.clean.cluster.final, levels = c("7", "2", "22", "19", "20", "9", "12", "8", "11", "24", "18", "3", "15", "17", "14", "21", "6", "10", "13", "23", "0", "1", "5", "4", "16"))
 Idents(human.se) <- human.se$human.clean.cluster.final
 DefaultAssay(human.se) <- "RNA"
 h.markers.rna <- FindAllMarkers(human.se, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.5)
 
-h.top15.rna <- h.markers.rna %>%
+h.top20.rna <- h.markers.rna %>%
   mutate(cluster = factor(cluster, levels = levels(human.se$human.clean.cluster.final))) %>%
   group_by(cluster) %>%
-  slice_max(avg_log2FC, n = 10)  # better than top_n(), which is deprecated
+  slice_max(avg_log2FC, n = 20)  # better than top_n(), which is deprecated
 
-DoHeatmap(human.se, features = h.top15.rna$gene, size = 7, raster = T) + 
+DoHeatmap(human.se, features = h.top20.rna$gene, size = 7, raster = T) + 
   scale_fill_gradientn(colors=c("white", "gray95", "gray30"))
 
 ################################################################## Metaneighbor analysis of replicable cell types between human and mouse developmental trajectories -- Fig.6D, Suplementary Fig. 12E
 ### Load SCT normalized human - mouse trajectory merged dataset  (gene name converted to human):
-human.mouseDev.sct <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/clean.human.mouseDev.merged.rds")
+human.mouseDev.sct <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Human.MouseDev.Merged.rds")
 
 ### Build summarizedExperiment object for MetaNeighbour
 sample.id <- human.mouseDev.sct$stage
@@ -298,7 +301,6 @@ pheatmap(hm.AUROC,
 
 
 ### Barplot for  Fig. 6D
-
 human.scores <- hm.AUROC[c("human|Appetitve", "human|Aversive"),]
 # Convert matrix to data frame and move rownames into a column
 human.scores.df <- human.scores %>%
@@ -360,15 +362,8 @@ ggplot(human.scores.df, aes(x = RegionStage, y = Score, fill = Region)) +
 
 
 ################################################################## Conserved expression of gene families between human and mouse -- Fig.6G
-
-hmP4.z.results <- read.csv("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/human.mouse.conserved.families.csv")
-
-
-hmP4.z.results <- hmP4.z.results %>%
-  mutate(gene_set = recode(gene_set, !!!name_map))
-
-hmP4.z.results <- hmP4.z.results %>%
-  filter(gene_set != "Synaptotagmin")
+### load gene family based decoding results
+hmP4.z.results <- read.csv("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Table5.dAUROC.CrossSpecies.csv")
 
 ### Visualization
 ### genes to label: p<0.001 for both aversive and appetitive

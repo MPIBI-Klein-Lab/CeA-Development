@@ -6,7 +6,10 @@ library(svMisc)
 library(ggplot2)
 library(dplyr)
 
-################################# ################################# ################################# 
+# NOTE: all the following functions takes Seurat object as input, 
+# which contains the 'Appetitve', 'Aversive' populations in their Idents, and 'stage' column in their metadata.
+# For reproducibility, a slow version of 'MetaNeighborUS' is presented here (with fast_version = FALSE). Typical running time: if n.run=10, 15-20min are required for 1 gene set
+
 ################################# Function for extract meta neighbor training-testing AUROC scores ##################################
 
 NM_run <- function(genes, 
@@ -74,10 +77,6 @@ NM_run <- function(genes,
   return(AUROC.df)
   
 }
-
-
-
-
 
 
 
@@ -151,11 +150,8 @@ GeneSetTest <- function(genes,
 
 
 
-
-
-
 ################################# ################################# ################################# 
-####### Function that test the effect of gene numbers on prediction scores.
+####### Function that test the effect of gene numbers on decoding scores.
 
 GeneNumberTest <- function(x,  # A numerical vector that decide the randomly chosen genes to be tested
                            seu.obj, 
@@ -218,10 +214,6 @@ GeneNumberTest <- function(x,  # A numerical vector that decide the randomly cho
   return(timecorse.df)
   
 }
-
-
-
-
 
 
 ################################# ################################# ################################# 
@@ -342,18 +334,6 @@ GeneSetTestMatrix <- function(Geneset_list,  # A list of vectors, each vector is
   return(dAUROC.scores)
   
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

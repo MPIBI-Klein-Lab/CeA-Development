@@ -8,9 +8,11 @@ library(cowplot)
 library(dplyr)
 library(Nebulosa)
 library(rlang)
-source("~/Documents/backup_mac20250207/Dev_manuscript/fig.4/Final2025.MN.TimeSeries.source.R")
+library(scales)
+source("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/MetaNeighbor.TimeSeries.source.R")
 
-MN_data <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/Seurat.pseudotime.tree.0301.rds")
+### load CeA developmental dataset
+MN_data <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.1/CeA.dev.rds")
 
 ### SCT Normalization
 DefaultAssay(MN_data) <- "RNA"
@@ -18,13 +20,11 @@ MN_data.list <- SplitObject(MN_data, split.by = "batch")
 MN_data.list <- lapply(X = MN_data.list, FUN = function(x) {
   SCTransform(x, vst.flavor = "v2", vars.to.regress = c("percent.mito", "nFeature_RNA", "nCount_RNA"))
 })
-# regress our percent.mito and nFeature_RNA is important, regress out nCount_RNA also helps
+# regress our percent.mito and nFeature_RNA seems important for reducing viability, regress out nCount_RNA also helps
 
 MN_data.sct <- merge(MN_data.list[[1]], MN_data.list[2:length(MN_data.list)])
 
-
 ################################## Run metaneighbour for individual gene set -- Fig.3B and Supplementary Fig.6C ################################## 
-
 ############# Define custome gene sets
 Semaphorins <- grep(pattern = "^Sema", x = rownames(MN_data.sct), value = TRUE)
 Semaphorin.receptors <- c("Nrp2", "Nrp1", "Plxna2", "Plxna1", "Plxnd1", "Plxnb1", "Plxna4", "Plxna3", "Plxnb2", "Plxnc1", "Plxnc2", "Plxnb3", "Plxdc2", "Plxdc1")
@@ -51,9 +51,7 @@ for (i in 1:length(GeneSet.list)) {
 }
 
 
-
-### Calculate gene family expression
-
+############# Calculate gene family expression
 for (i in 1:length(GeneSet.list)) {
   MN_data.sct[[paste0(names(result.list)[[i]], ".perc")]] <- PercentageFeatureSet(MN_data.sct, 
                                                                                   features = intersect(rownames(MN_data.sct), GeneSet.list[[i]]), 
@@ -77,9 +75,7 @@ df.expression <- MN_data.sct.subset[[c("trajectories", "stage",
                                        "Copines.perc", 
                                        "Granins.perc")]]
 
-
-
-#### Plots for visualization
+############# Plots for visualization
 for (i in seq_along(GeneSet.list)) {
   # p1
   p1 <- ggplot(result.list[[i]], aes(x = stage, y = scores, group = chance, fill = cell_type)) +
@@ -135,14 +131,13 @@ for (i in seq_along(GeneSet.list)) {
 
 ################################## Effect of gene set size -- Supplementary Fig.6A ################################## 
 ############# running test by calling 'GeneNumberTest' function
-
 ngene.effect.zoomout <- GeneNumberTest(x=c(5, 10, 20, 30, 40, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300), MN_data, n.run=10)
 ngene.effect.zoomin <- GeneNumberTest(x=c(5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35), MN_data, n.run=10)
-
 
 ngene.effect.zoomin <- ngene.effect.zoomin %>% filter(stage %in% c("E15", "P0", "P21"))
 ngene.effect.zoomout <- ngene.effect.zoomout %>% filter(stage %in% c("E15", "P0", "P21"))
 
+############# Visualization
 # Define colors for cell types, be cautious about the typo of APPETITVE instead of APPETITIVE ?!!!
 celltype.colors <- c(Aversive = "#E41A1C", Appetitve = "#377EB8")
 
@@ -209,24 +204,25 @@ p1 <- ggplot(ngene.effect.zoomout, aes(x=ngene, y=scores, group=cell_type, fill=
   scale_color_manual(values = celltype.colors) +
   scale_fill_manual(values = celltype.colors) 
 
-
 plot_grid(p1, p2, ncol = 1, rel_heights = c(4, 3))
 
 
 ################################## Screening for the HGNC gene family list -- Fig.3C ################################## 
 ############# getting gene family list
 library(readxl)
-data <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/HGNC_genes.xlsx")
+data <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/HGNC.Rinput.xlsx")
 gene_list <- lapply(data, as.character)
 names(gene_list) <- make.names(names(gene_list))
 gene_list <- lapply(gene_list, function(x) x[!is.na(x)])
 
-hist(sapply(gene_list, length), breaks = 35, xlab = '#Genes', cex.axis = 2)
+############# distribution of gene family size
+hist(sapply(gene_list, length), breaks = 50, xlab = '#Genes', cex.axis = 2)
 
+############# filter gene families to retain those consisted of < 50 genes
 gene_list.50 <- gene_list[sapply(gene_list, function(x) length(x) <= 50, simplify = TRUE)]
 
 ############# running test by calling 'GeneNumberTest' function
-####### GeneNumberTest test a list of gene sets, return the delta-AUROC scores and output a matrix for heat map
+####### GeneNumberTest test a list of gene sets, return the delta-AUROC scores and output a matrix for heatmaps
 
 DefaultAssay(MN_data.sct) <- "SCT"
 HGNCsets.results <- GeneSetTestMatrix(gene_list.50, MN_data.sct, 
@@ -239,14 +235,12 @@ HGNCsets.results <- GeneSetTestMatrix(gene_list.50, MN_data.sct,
 
 App.HGNC.results <- na.omit(HGNCsets.results$Appetitive)
 Ave.HGNC.results <- na.omit(HGNCsets.results$Aversive)
-
 combined.HGNC.results <- cbind(App.HGNC.results, Ave.HGNC.results)
 
 
 ################################## Screening from the manually curated gene set -- Fig.3C ################################## 
 ############# getting gene family list
-library(readxl)
-custom.data <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/Final2025.Families.axon.synapse.Rinput.xlsx")
+custom.data <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/Manually.Curated.Rinput.xlsx")
 custom.data <- lapply(custom.data, as.character)
 names(custom.data) <- make.names(names(custom.data))
 custom.data <- lapply(custom.data, function(x) x[!is.na(x)])
@@ -274,5 +268,5 @@ dAUROC.2025.final <- rbind(combined.custom.results, combined.HGNC.results[! rown
 ###further clean of duplicated gene sets
 dAUROC.2025.final <- dAUROC.2025.final[! rownames(dAUROC.2025.final) %in% c("Synaptotagmin", "non.clustered.protocadherins", "Glycine_receptors", "EPH_receptors", "Calcium_channels._voltage.dependent"), ]
 ### save results
-write.csv(dAUROC.2025.final, "~/Documents/backup_mac20250207/Dev_manuscript/data.submission/dAUROC.481GeneSets.mean.csv", row.names = T)
+#write.csv(dAUROC.2025.final, "~/Documents/backup_mac20250207/Dev_manuscript/data.submission/Table4.dAUROC.Trajecory.csv", row.names = T)
 

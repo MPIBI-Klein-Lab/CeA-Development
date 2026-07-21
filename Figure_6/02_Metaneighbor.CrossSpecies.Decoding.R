@@ -14,7 +14,7 @@ plan("multicore")  # Or "multisession" depending on your OS
 
 ######################################################### Build summarized experiment objects for Metaneighbour
 ### Prepare mouse developmental P4 datasets (gene name converted into human)
-mouse.dev.se <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/clean.human.mouseDev.merged.rds")
+mouse.dev.se <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Human.MouseDev.Merged.rds")
 
 ### recalculate quality matrics for SCT normalization
 mouse.dev.se$nCount_RNA <- Matrix::colSums(mouse.dev.se[["RNA"]]$counts)
@@ -34,7 +34,7 @@ mouse.P4.list <- lapply(X = mouse.P4.list, FUN = function(x) {
 
 
 ### Prepare human annotated datasets 
-human.se <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/clean.human.se.consensus.rds")
+human.se <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Human.CeA.consensus.rds")
 ### recalculate quality matrics for SCT normalization
 human.se$nCount_RNA <- Matrix::colSums(human.se[["RNA"]]$counts)
 human.se$nFeature_RNA <- Matrix::colSums(human.se[["RNA"]]$counts > 0)
@@ -53,7 +53,6 @@ human.list <- lapply(X = human.list, FUN = function(x) {
 human.list <- lapply(X = human.list, FUN = function(x) {
   subset(x, trajectories %in% c("Aversive", "Ast region", "Appetitve", "IPAC", "ITC"))
 })
-
 
 
 ### merge human-mouse.P4 data sets
@@ -89,7 +88,6 @@ hmP4.MN <- SummarizedExperiment(assays = hmP4.assay.sct)
 #saveRDS(hmP4.MN, "h.mP4.SummarizedExp.rds")
 
 ######################################################### Function to test different gene set sizes on MetaNeighbor and extract AUROCs
-
 test_gene_set_size <- function(gene_set_sizes, SE_object, study_id, cell_type,
                                source_label = "P4|Appetitve", target_label = "human|Appetitve",
                                source_label_2 = "P4|Aversive", target_label_2 = "human|Aversive",
@@ -201,7 +199,6 @@ Null.sema.neuropeptides <- test_gene_set_size(
 null_semaphorins <- Null.sema.neuropeptides$appetitive_AUROC[Null.sema.neuropeptides$gene_set_size == 19]
 null_neuropeptided <- Null.sema.neuropeptides$appetitive_AUROC[Null.sema.neuropeptides$gene_set_size == 57]
 
-
 ### Get semaphorin AUROC
 sema_auroc_app <- MetaNeighborUS(
   var_genes = Semaphorin.genes,
@@ -225,7 +222,6 @@ sema_auroc_ave <- MetaNeighborUS(
 
 ### Compute Z-score
 (sema_auroc_ave - mean(null_semaphorins)) / sd(null_semaphorins)
-
 ### Compute empirical p-value
 mean(null_semaphorins >= sema_auroc_ave)
 
@@ -261,7 +257,6 @@ Neuropeptide_auroc_ave <- MetaNeighborUS(
 
 # Compute Z-score
 (Neuropeptide_auroc_app - mean(null_neuropeptided)) / sd(null_neuropeptided)
-
 # Compute empirical p-value
 mean(null_neuropeptided >= Neuropeptide_auroc_app)
 
@@ -273,17 +268,16 @@ abline(v = Neuropeptide_auroc_app, col = "#377EB8", lwd = 4)
 abline(v = Neuropeptide_auroc_ave, col = "#E41A1C", lwd = 4)
 
 
-
 ################################################################## Prepare gene families for Human-mouse conserved gene family screening
 ### read gene families (same list as in Fig.3)
 library(readxl)
-custom.data <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/Final2025.Families.axon.synapse.Rinput.xlsx")
+### From knowledge based manually curated
+custom.data <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/Manually.Curated.Rinput.xlsx")
 custom.data <- lapply(custom.data, as.character)
 names(custom.data) <- make.names(names(custom.data))
 custom.data <- lapply(custom.data, function(x) x[!is.na(x)])
-
-
-HGNC.list <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/HGNC_genes.Rinput.xlsx")
+### From HGNC database
+HGNC.list <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/HGNC.Rinput.xlsx")
 HGNC.list <- lapply(HGNC.list, as.character)
 names(HGNC.list) <- make.names(names(HGNC.list))
 HGNC.list <- lapply(HGNC.list, function(x) x[!is.na(x)])
@@ -315,7 +309,6 @@ HGNC.data.human <- lapply(HGNC.50.GeneList, function(genes) {
 
 ### clean gene name list
 custom.data.human <- custom.data.human[!names(custom.data.human) %in% c("cytoskeleton.binding...8", "Calcium.channel.regulatory.subunits", "Semaphorins")]
-
 gene.family.all <- c(custom.data.human, HGNC.data.human)
 ### If further duplecated, keep only the first occurrence of each name
 gene.family.all <- gene.family.all[!duplicated(names(gene.family.all))]
@@ -450,11 +443,11 @@ name_map <- c(
   "SV2.family.and.related" = "SV2.family.and.related"
 )
 
-
 hmP4.z.results <- hmP4.z.results %>%
   mutate(gene_set = recode(gene_set, !!!name_map))
 
+### Clean for duplicated "Synaptotagmin" gene sets
 hmP4.z.results <- hmP4.z.results %>%
   filter(gene_set != "Synaptotagmin")
 
-#write.csv(hmP4.z.results, "~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/human.mouse.conserved.families.csv")
+#write.csv(hmP4.z.results, "~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Table5.dAUROC.CrossSpecies.csv")

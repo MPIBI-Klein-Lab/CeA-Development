@@ -1,0 +1,12 @@
+# Large processed objects
+data/*.rds
+
+
+
+# RStudio
+.Rhistory
+.RData
+.Rproj.user/
+
+# macOS
+.DS_Store
