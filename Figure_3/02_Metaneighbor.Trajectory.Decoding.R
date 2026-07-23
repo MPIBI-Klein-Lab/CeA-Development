@@ -9,10 +9,18 @@ library(dplyr)
 library(Nebulosa)
 library(rlang)
 library(scales)
-source("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/MetaNeighbor.TimeSeries.source.R")
+library(here)
+
+source(here("Figure_3/MetaNeighbor.TimeSeries.source.R"))
+
+data_dir <- here("data")
+output_dir <- here("Figure_3", "output")
+dir.create(output_dir,
+           recursive = TRUE,
+           showWarnings = FALSE)
 
 ### load CeA developmental dataset
-MN_data <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.1/CeA.dev.rds")
+MN_data <- readRDS(file.path(data_dir, "CeA.dev.rds"))
 
 ### SCT Normalization
 DefaultAssay(MN_data) <- "RNA"
@@ -25,7 +33,7 @@ MN_data.list <- lapply(X = MN_data.list, FUN = function(x) {
 MN_data.sct <- merge(MN_data.list[[1]], MN_data.list[2:length(MN_data.list)])
 
 ################################## Run metaneighbour for individual gene set -- Fig.3B and Supplementary Fig.6C ################################## 
-############# Define custome gene sets
+############# Define custom gene sets
 Semaphorins <- grep(pattern = "^Sema", x = rownames(MN_data.sct), value = TRUE)
 Semaphorin.receptors <- c("Nrp2", "Nrp1", "Plxna2", "Plxna1", "Plxnd1", "Plxnb1", "Plxna4", "Plxna3", "Plxnb2", "Plxnc1", "Plxnc2", "Plxnb3", "Plxdc2", "Plxdc1")
 Ephorins <- grep(pattern = "^Efn", x = rownames(MN_data.sct), value = TRUE)
@@ -119,8 +127,11 @@ for (i in seq_along(GeneSet.list)) {
   combined_plot <- plot_grid(p1, p2, rel_widths = c(7, 6))
   
   ggsave(
-    filename = file.path("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/Single.GeneSets",
-                         paste0(names(GeneSet.list)[i], ".pdf")),
+    filename = file.path(
+      output_dir,
+      "Single.GeneSets",
+      paste0(names(GeneSet.list)[i], ".pdf")
+    ),
     plot = combined_plot,
     width = 14.86,
     height = 4.86,
@@ -131,8 +142,8 @@ for (i in seq_along(GeneSet.list)) {
 
 ################################## Effect of gene set size -- Supplementary Fig.6A ################################## 
 ############# running test by calling 'GeneNumberTest' function
-ngene.effect.zoomout <- GeneNumberTest(x=c(5, 10, 20, 30, 40, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300), MN_data, n.run=10)
-ngene.effect.zoomin <- GeneNumberTest(x=c(5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35), MN_data, n.run=10)
+ngene.effect.zoomout <- GeneNumberTest(x=c(5, 10, 20, 30, 40, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300), MN_data.sct, n.run=10)
+ngene.effect.zoomin <- GeneNumberTest(x=c(5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35), MN_data.sct, n.run=10)
 
 ngene.effect.zoomin <- ngene.effect.zoomin %>% filter(stage %in% c("E15", "P0", "P21"))
 ngene.effect.zoomout <- ngene.effect.zoomout %>% filter(stage %in% c("E15", "P0", "P21"))
@@ -208,9 +219,9 @@ plot_grid(p1, p2, ncol = 1, rel_heights = c(4, 3))
 
 
 ################################## Screening for the HGNC gene family list -- Fig.3C ################################## 
-############# getting gene family list
+############# getting gene family list from the data folder
 library(readxl)
-data <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/HGNC.Rinput.xlsx")
+data <- readxl::read_excel(file.path(data_dir, "HGNC.Rinput.xlsx"))
 gene_list <- lapply(data, as.character)
 names(gene_list) <- make.names(names(gene_list))
 gene_list <- lapply(gene_list, function(x) x[!is.na(x)])
@@ -218,11 +229,11 @@ gene_list <- lapply(gene_list, function(x) x[!is.na(x)])
 ############# distribution of gene family size
 hist(sapply(gene_list, length), breaks = 50, xlab = '#Genes', cex.axis = 2)
 
-############# filter gene families to retain those consisted of < 50 genes
+############# filter gene families to retain those consisted of <= 50 genes
 gene_list.50 <- gene_list[sapply(gene_list, function(x) length(x) <= 50, simplify = TRUE)]
 
-############# running test by calling 'GeneNumberTest' function
-####### GeneNumberTest test a list of gene sets, return the delta-AUROC scores and output a matrix for heatmaps
+############## Run gene-family screening using GeneSetTestMatrix()
+####### it returns the delta-AUROC scores and output a matrix for heatmaps
 
 DefaultAssay(MN_data.sct) <- "SCT"
 HGNCsets.results <- GeneSetTestMatrix(gene_list.50, MN_data.sct, 
@@ -239,16 +250,16 @@ combined.HGNC.results <- cbind(App.HGNC.results, Ave.HGNC.results)
 
 
 ################################## Screening from the manually curated gene set -- Fig.3C ################################## 
-############# getting gene family list
-custom.data <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/Manually.Curated.Rinput.xlsx")
+############# get family list from knowledge-based curation
+custom.data <- readxl::read_excel(file.path(data_dir, "Manually.Curated.Rinput.xlsx"))
 custom.data <- lapply(custom.data, as.character)
 names(custom.data) <- make.names(names(custom.data))
 custom.data <- lapply(custom.data, function(x) x[!is.na(x)])
 
 hist(sapply(custom.data, length), breaks = 10, xlab = '#Genes', cex.axis = 2)
 
-############# running test by calling 'GeneNumberTest2' function
-####### GeneNumberTest2 test a list of gene sets, return both the delta-AUROC scores and p-value comparing the paired gene set and randomly selected genes
+############# Run gene-family screening using GeneSetTestMatrix2()
+####### GeneSetTestMatrix2 tests a list of gene sets and returns delta-AUROC values and p-values
 
 DefaultAssay(MN_data.sct) <- "SCT"
 custom.geneset.result <- GeneSetTestMatrix2(custom.data, MN_data.sct, 
@@ -267,6 +278,8 @@ duplicated.names <- intersect(rownames(combined.custom.results), rownames(combin
 dAUROC.2025.final <- rbind(combined.custom.results, combined.HGNC.results[! rownames(combined.HGNC.results) %in% duplicated.names, ])
 ###further clean of duplicated gene sets
 dAUROC.2025.final <- dAUROC.2025.final[! rownames(dAUROC.2025.final) %in% c("Synaptotagmin", "non.clustered.protocadherins", "Glycine_receptors", "EPH_receptors", "Calcium_channels._voltage.dependent"), ]
-### save results
-#write.csv(dAUROC.2025.final, "~/Documents/backup_mac20250207/Dev_manuscript/data.submission/Table4.dAUROC.Trajecory.csv", row.names = T)
+
+### Optional: save results (without p-values)
+#write.csv(dAUROC.2025.final, file = file.path(output_dir,"Table4.dAUROC.Trajectory.recalculated.csv"), row.names = T)
+
 

@@ -1,6 +1,16 @@
+########################################################## ######################################################## 
+# Figure 3 visualization script
+#
+# This script reproduces the figure panels from previously generated trajectory-decoding results.
+#
+# To reproduce the decoding analyses themselves, run:
+#   02_Metaneighbor.Trajectory.Decoding.R
+#
+# The helper functions are implemented in:
+#   MetaNeighbor.TimeSeries.source.R
+##########################################################  ######################################################## 
+
 library(Seurat)
-library(MetaNeighbor)
-library(SummarizedExperiment)
 library(RColorBrewer)
 library(svMisc)
 library(ggplot2)
@@ -8,18 +18,19 @@ library(cowplot)
 library(dplyr)
 library(rlang)
 library(pheatmap)
-#source("~/Documents/backup_mac20250207/Dev_manuscript/fig.4/Final2025.MN.TimeSeries.source.R")
+library(here)
 
-########################################################## For establishment of MetaNeighbor method for trajectory preditoion please refer to '02_Metaneighbor.Trajectory.Decoding.R'
-########################################################## For detailed usage of decoding related functions please refer to the source file 'MetaNeighbor.TimeSeries.source.R'
+data_dir <- here("data")
+
 ########################################################## Fig. 3C
 ### read mean dAUROC value
-dAUROC.2025.final.new <- read.csv("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/Table4.dAUROC.Trajecory.csv", row.names = 1,
+dAUROC.table <- read.csv(file = file.path(data_dir, "Table4.dAUROC.Trajectory.csv"), row.names = 1,
                                   check.names = FALSE)
 
 ### read manually curated gene family names
 library(readxl)
-manual.curated <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/Manually.Curated.Rinput.xlsx")
+manual.curated <- readxl::read_excel(file.path(data_dir, "Manually.Curated.Rinput.xlsx"))
+
 manual.curated <- lapply(manual.curated, as.character)
 names(manual.curated) <- make.names(names(manual.curated))
 manual.curated <- lapply(manual.curated, function(x) x[!is.na(x)])
@@ -34,9 +45,9 @@ col.meta$stage <- factor(col.meta$stage, levels = c("E15", "E18", "P0", "P4", "P
 
 
 ### row metadata
-is_manual <- rownames(dAUROC.2025.final.new) %in% names(manual.curated)
+is_manual <- rownames(dAUROC.table) %in% names(manual.curated)
 source_label <- ifelse(is_manual, "Manually.curated", "HGNC.database")
-row.meta <- data.frame(Source = source_label, row.names = rownames(dAUROC.2025.final.new))
+row.meta <- data.frame(Source = source_label, row.names = rownames(dAUROC.table))
 
 
 stage_colors <- brewer.pal(6, "PRGn")
@@ -48,13 +59,11 @@ my_colour = list(
   Source = c(Manually.curated = "coral3", HGNC.database =   "burlywood1"))
 
 
-# Prepare the annotation based on p-values
-#annotation_matrix <- matrix("", nrow = nrow(dAUROC.2025.final.p), ncol = ncol(dAUROC.2025.final.p))
-#annotation_matrix[dAUROC.2025.final.p < 0.001] <- "*"
-#annotation_matrix.t <- t(annotation_matrix)
+### P-values are not displayed across the complete heatmap to preserve figure readability.
+### Statistical significance was evaluated separately for the enlarged panels using GeneSetTestMatrix2().
+### Asterisks were added manually based on those calculated p-values.
 
-pheatmap(dAUROC.2025.final.new,
-         #display_numbers = annotation_matrix,
+pheatmap(dAUROC.table,
          cluster_rows = T,
          cluster_cols = F,
          #color = colorRampPalette(brewer.pal(n = 9, name ="BuPu"))(100), # good
@@ -76,8 +85,9 @@ pheatmap(dAUROC.2025.final.new,
 
 
 ########################################################## Prepare data for expression plots ######################################################## 
-### read CeA development dataset
-se.data.all <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.1/CeA.dev.rds")
+### load CeA developmental dataset
+se.data.all <- readRDS(file.path(data_dir, "CeA.dev.rds"))
+
 ### SCT normalization
 se.data.list <- SplitObject(se.data.all, split.by = "batch")
 se.data.list <- lapply(X = se.data.list, FUN = function(x) {
@@ -95,7 +105,8 @@ se.data.sct$segments.simple <- factor(se.data.sct$segments.simple, levels = c("P
 
 
 ##################################################### HEATMAP gene expression summary (Fig. 3D related) ######################################################## 
-### Aggregate expression for heatmap  
+
+### Aggregate SCT-normalized expression across developmental subpopulations for heatmap visualization
 DefaultAssay(se.data.sct) <- "SCT"
 agg.sct <- AggregateExpression(se.data.sct, assays = "SCT", group.by = c("segments.simple", "stage"), return.seurat = T)
 agg.sct$segments.simple <- factor(agg.sct$segments.simple, levels = c("P-app", "CeL-appetitive", "CeM-appetitive", 
@@ -155,10 +166,6 @@ VlnPlot(P10, assay = "SCT", layer = "data",
         group.by = "segments.simple", stack = T, fill.by = "ident", cols =  c("#377EB8", "#377EB8",  "#E41A1C", "#E41A1C"), flip=TRUE)
 
 
-
-######################################################## Density plots ######################################################## 
-#library(Nebulosa)
-#plot_density(se.data.all, features = c("Sema3a", "Sema6a", "Sema3c", "Sema5a", "Sema3e"))
 
 ######################################################## Regulon plots (Chao) ######################################################## 
 

@@ -8,19 +8,19 @@ library(scales)
 library(RColorBrewer)
 library(VennDiagram)
 library(Nebulosa)
-library("URD")
-library(Seurat)
-library(ggplot2)
-library(RColorBrewer)
-library(cowplot)
-library(dplyr)
-library("Matrix")
-library("pheatmap")
+library(URD)
+library(Matrix)
+library(pheatmap)
+library(SingleCellExperiment)
+library(here)
+
+stage.colors <- brewer.pal(6, "PRGn")
+data_dir <- here("data")
 
 
 ########################################################################### Fig. S1
 ### read in subpallial amygdala developmental atlas
-Amygdala.dev <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.1/Amygdala.dev.rds")
+Amygdala.dev <- readRDS(file.path(data_dir, "Amygdala.dev.rds"))
 DimPlot(Amygdala.dev, group.by = "annotation.updated", label = T, label.size = 5, repel = T, cols = colorRampPalette(brewer.pal(8, "Set3"))(23))
 DimPlot(Amygdala.dev, group.by = "stage", cols = stage.colors, pt.size = 0.5)
 DimPlot(Amygdala.dev, group.by = "rep", pt.size = 0.5, alpha = 0.5, cols = c("#D8B365", "#5AB4AC", "#35978F"))
@@ -29,12 +29,11 @@ CeA.all.har.markers <- FindAllMarkers(object = Amygdala.dev, only.pos = TRUE, mi
 
 ########################################################################### Fig.1 trajectory
 ### read in CeA developmental dataset
-CeA.dev <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.1/CeA.dev.rds")
+CeA.dev <- readRDS(file.path(data_dir, "CeA.dev.rds"))
 
 ########################################################################### Fig.1C Stage(without Velocity), 
 ###Velocity will be provide as Python script (Alisson)
 
-stage.colors <- brewer.pal(6, "PRGn")
 DimPlot(CeA.dev, group.by = "stage", label = F, na.value = "gray90",
         cols = stage.colors,
         alpha = 0.2,
@@ -93,7 +92,7 @@ VlnPlot(se.data.cea, features = "pseudotime", group.by = "stage", cols = stage.c
 
 ###########################################################################  URD trajectory, also in '02_Build.URD.Tree.R'
 ### Read URD tree object
-axial.tree <- readRDS(file="~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.1/urd.tree.rds")
+axial.tree <- readRDS(file.path(data_dir, "urd.tree.rds"))
 
 ############################################################## Fig. S4 C
 plotDim(axial.tree, "visitfreq.log.1", plot.title="CeL_Prkcd", transitions.plot=10000)
@@ -231,7 +230,6 @@ E15.cea$orig.ident <- E15$trajectories
 
 ### Note: The Libra package was built for older versions of Seurat (v3/v4) and relies on GetAssayData(..., slot = "counts")
 ### Bypass Seurat v5 Using SingleCellExperiment
-library(SingleCellExperiment)
 sce_obj <- as.SingleCellExperiment(E15.cea, assay = "RNA")
 
 ### pseudobulk DE run

@@ -1,27 +1,38 @@
-library("URD")
+# This script reconstructs the URD trajectory analysis.
+# Because random walks and tree construction include stochastic components,
+# the rebuilt tree may differ slightly from the archived tree used for the
+# final figures. These differences do not alter the biological conclusions.
+#
+# The exact tree object used for the manuscript figures is provided separately
+# as data/urd.tree.rds.
+
+library(URD)
 library(Seurat)
 library(ggplot2)
 library(RColorBrewer)
 library(cowplot)
 library(dplyr)
-library("Matrix")
-library("pheatmap")
+library(Matrix)
+library(pheatmap)
+library(here)
 
-
-# set development colors
 stage.colors <- brewer.pal(6, "PRGn")
+data_dir <- here("data")
 
-
-# Load annotated data
-se.data <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.1/CeA.dev.rds")
+###################################  Load CeA developmental dataset ################################### 
+se.data <- readRDS(file.path(data_dir, "CeA.dev.rds"))
+# Note:
+# CeA.dev.rds contains the final pseudotime and tree-segment metadata used
+# for the manuscript figures. This script reconstructs the URD workflow in
+# memory but does not overwrite the archived metadata.
 
 DefaultAssay(se.data) <- "RNA"
 
-# redo normalization using sct
+# Recalculate SCT-normalized expression separately for each batch
 se.data.list <- SplitObject(se.data, split.by = "batch")
 se.data.list <- lapply(X = se.data.list, FUN = function(x) {
   SCTransform(x, vst.flavor = "v2", return.only.var.genes = FALSE)
-}) # regress out percent.mito and nFeature_RNA, nCount_RNA is not so helpful for diffusion map calculation
+}) 
 
 se.data.features <- SelectIntegrationFeatures(object.list = se.data.list, nfeatures = 3000)
 se.data.sct <- merge(se.data.list[[1]], se.data.list[2:length(se.data.list)])
@@ -32,13 +43,11 @@ se.data.cea <- subset(se.data.sct, trajectories %in% c("Appetitve", "Aversive"))
 
 
 ################################### Build URD object #############################################
-### using DATA slot 
+### Create URD object using SCT counts and scaled expression
 
 count.data <- GetAssayData(object = se.data.cea[["SCT"]], layer = "counts")
-#sct.data <- GetAssayData(object = se.data.sub.1[["SCT"]], layer = "data")
 sct.scaledata <- GetAssayData(object = se.data.cea[["SCT"]], layer = "scale.data")
 sct.scaledata <- as(sct.scaledata, "dgCMatrix")
-
 metadata <- se.data.cea@meta.data
 
 # Creat URD object
@@ -47,16 +56,15 @@ object <- createURD(count.data = count.data, meta = metadata, min.cells=0, min.g
 object@logupx.data <- sct.scaledata
 object@var.genes <- se.data.features
 
-
-# import UMAP from hamonized (harmony) data
+# Import UMAP coordinates from the Harmony-integrated Seurat object
 object@tsne.y <- as.data.frame(se.data@reductions$umap@cell.embeddings)
 colnames(object@tsne.y) <- c("tSNE1", "tSNE2")
 plotDim(object, "stage", plot.title = "tSNE: Stage", reduction.use = "tsne", discrete.colors = stage.colors)
 
-
-# Root cells (pseudotime 0): 
-# cells from one E15 dataset collected at a slightly earlier developmental stage (E15_1_all) were assigned as the earliest developmental population 
+# Root cells (pseudotime = 0):
+# Cells from the E15_1_all dataset, collected at a slightly earlier developmental stage, were used to orient the developmental manifold.
 root.cells <- whichCells(object, "batch", "E15_1_all")
+
 # Tip clusters
 P21.cells <- whichCells(object, "stage", "P21")
 object@group.ids[P21.cells, "tip.clusters"] <- as.character(object@meta[P21.cells, "P21.annotated"])
@@ -88,7 +96,7 @@ plotDim(object, "tip.numbers", plot.title = "tSNE: Stage", reduction.use = "tsne
 ################################### Data Processing #####################################
 ### Calculate diffusion map
 object <- calcDM(object, knn = 40, sigma.use = 45)
-plotDimArray(object = object, reduction.use = "dm", dims.to.plot = 1:18, label = "stage", plot.title = "", outer.title = "STAGE - Diffusion Map Sigma 9", legend = F, alpha = 0.3, discrete.colors = stage.colors)
+plotDimArray(object = object, reduction.use = "dm", dims.to.plot = 1:18, label = "stage", plot.title = "", outer.title = "STAGE - Diffusion Map Sigma 45", legend = F, alpha = 0.3, discrete.colors = stage.colors)
 plotDim(object, "stage", transitions.plot = 10000, transitions.alpha = 0.1, plot.title="Developmental stage (with transitions)")
 
 ### Calculate pseudotime
@@ -128,16 +136,18 @@ plotTree(axial.tree, "trajectories", title="Developmental Stage")
 plotTree(axial.tree, "stage", title="Developmental Stage")
 plotTree(axial.tree, "pseudotime", title="Developmental Stage")
 
-#saveRDS(axial.tree, file="~/Documents/Dev_manuscript/fig.2_precursors/urd.tree.k40.s45.final.final.rds")
-#saveRDS(object, file="~/Documents/Dev_manuscript/fig.2_precursors/urd.object.k40.s45.final.final.rds")
-
+# Optional: save the reconstructed tree without overwriting the archived object
+# saveRDS(
+#   axial.tree,
+#   file = file.path(data_dir, "urd.tree.reconstructed.rds")
+# )
 
 plotDim(axial.tree, "segment", plot.title="URD tree segment", point.size = 1.5, alpha=0.5)
 plotTree(axial.tree, "segment")
 
 
-#################################################### Plot gene expression on UDR tree ###########################################################
-### If one gene is not presented in all stages, the UDR object cannot plot the gene expression on the tree (it throws an error), for example:
+#################################################### Plot gene expression on URD tree ###########################################################
+### If one gene is not presented in all stages, the URD object cannot plot the gene expression on the tree (it throws an error), for example:
 
 for (i in 1:length(se.data.list)) {
   print(paste0(i, " - ", unique(se.data.list[[i]]$batch)))
@@ -243,14 +253,10 @@ se.data$segments[axial.tree@tree$cells.in.segment[["19"]]] <- "P_app" ### precur
 
 
 ########################################## Pseudo time plotting - URD related supplementary figure ####################################################################
-### add pseudo time to seurat object
-#se.data$pseudotime <- NA
-#se.data$pseudotime[rownames(axial.tree@pseudotime)] <- axial.tree@pseudotime$pseudotime
-#FeaturePlot(se.data, features = "pseudotime", cols = c("red", "blue"))
-#saveRDS(se.data, "/Users/songwei/Documents/Dev_manuscript/fig.2_precursors/Seurat.pseudotime.tree.rds")
-
-### Subset for CeA-only populations
-se.data.cea <- subset(se.data, trajectories %in% c("Appetitve", "Aversive"))
+### Plot archived pseudotime used in the manuscript
+#
+# CeA.dev.rds already contains the final pseudotime values used for the manuscript figures. 
+# The reconstructed pseudotime generated above is not written back to the archived Seurat object.
 
 VlnPlot(se.data.cea, features = "pseudotime", group.by = "stage", cols = stage.colors, alpha = 0.3, pt.size = 0.5) + 
   theme(axis.text=element_text(size=18),axis.title=element_text(size=14))

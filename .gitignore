@@ -1,12 +1,16 @@
 # Large processed objects
 data/*.rds
 
+# Generated analysis outputs
+**/output/
 
+# macOS
+.DS_Store
 
 # RStudio
 .Rhistory
 .RData
 .Rproj.user/
 
-# macOS
-.DS_Store
+# Temporary files
+*.log

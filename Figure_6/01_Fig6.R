@@ -1,3 +1,13 @@
+############################################################
+### This script reproduces Figure 6 and Extended Data Fig.12.
+### Computational analyses are performed in:
+###
+### 02_Metaneighbor.CrossSpecies.Decoding.R
+###
+### Supplementary Table 5 is read from
+### data/Table5.dAUROC.CrossSpecies.csv
+############################################################
+
 library(Seurat)
 library(ggplot2)
 library(ggrepel)
@@ -6,15 +16,18 @@ library(harmony)
 library(pheatmap)
 library(RColorBrewer)
 library(clue)
-library('glmGamPoi')
-library("sctransform")
+library(glmGamPoi)
+library(sctransform)
 library(MetaNeighbor)
 library(SingleCellExperiment)
 library(tidyverse)
+library(here)
+
+data_dir <- here("data")
 
 ################################################################## Mapping of human-mouse adult cell types -- Supplementary Fig.12D
 ### load human-mouse integrated dataset
-cca.se.fin <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Human.MouseAdult.Integrated.rds")
+cca.se.fin <- readRDS(file.path(data_dir, "Human.MouseAdult.Integrated.rds"))
 
 ### integrated.clusters: human-mouse shared clusters
 cca.se.fin$integrated.clusters <- cca.se.fin$cca.resolution0.8.number
@@ -66,8 +79,6 @@ pheatmap(rereordered_matrix,
          fontsize_row=15,
          angle_col = "45"
 )
-
-#write.csv(rereordered_matrix, file = "human_mouse_freq.csv", quote = FALSE)
 
 ################################################################## Calculation of empirical p-value -- Fig.6A
 # Store original similarity matrix
@@ -162,7 +173,8 @@ pheatmap(threshold.matrix,
 
 ################################################################## Human CeA consensus types -- Fig.6B-C, Suplementary Fig.12 A-C
 ### loading human annotated dataset
-human.se <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Human.CeA.consensus.rds")
+human.se <- readRDS(file.path(data_dir, "Human.CeA.consensus.rds"))
+
 DimPlot(human.se, label = T, pt.size = 0.5, label.size = 10, repel = T, group.by = "human.clean.cluster.final")
 
 ### Inspection of consensus cell type annotation
@@ -264,7 +276,7 @@ DoHeatmap(human.se, features = h.top20.rna$gene, size = 7, raster = T) +
 
 ################################################################## Metaneighbor analysis of replicable cell types between human and mouse developmental trajectories -- Fig.6D, Suplementary Fig. 12E
 ### Load SCT normalized human - mouse trajectory merged dataset  (gene name converted to human):
-human.mouseDev.sct <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Human.MouseDev.Merged.rds")
+human.mouseDev.sct <- readRDS(file.path(data_dir, "Human.MouseDev.Merged.rds"))
 
 ### Build summarizedExperiment object for MetaNeighbour
 sample.id <- human.mouseDev.sct$stage
@@ -361,9 +373,11 @@ ggplot(human.scores.df, aes(x = RegionStage, y = Score, fill = Region)) +
   )
 
 
-################################################################## Conserved expression of gene families between human and mouse -- Fig.6G
-### load gene family based decoding results
-hmP4.z.results <- read.csv("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Table5.dAUROC.CrossSpecies.csv")
+################################################################## Conserved gene-family decoding between human and mouse -- Fig.6G
+### load archived gene family based decoding results
+#hmP4.z.results <- read.csv("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Table5.dAUROC.CrossSpecies.csv")
+hmP4.z.results <- read.csv(file.path(data_dir, "Table5.dAUROC.CrossSpecies.csv"))
+
 
 ### Visualization
 ### genes to label: p<0.001 for both aversive and appetitive
@@ -411,8 +425,5 @@ ggplot(hmP4.z.results, aes(x = appetitive_delta, y = aversive_delta)) +
     panel.border = element_rect(color = "grey50", fill = NA, linewidth = 1.1),
     plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
   )
-
-
-
 
 

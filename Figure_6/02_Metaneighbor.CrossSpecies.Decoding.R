@@ -10,13 +10,20 @@ library(SingleCellExperiment)
 library(pbapply)
 library(future)
 options(future.globals.maxSize = 8 * 1024^3)  # Set max size to 8GB
-plan("multicore")  # Or "multisession" depending on your OS
 
-######################################################### Build summarized experiment objects for Metaneighbour
+library(here)
+data_dir <- here("data")
+output_dir <- here("Figure_6", "output")
+dir.create(output_dir,
+           recursive = TRUE,
+           showWarnings = FALSE)
+
+
+######################################################### Build summarized experiment objects for MetaNeighbor
 ### Prepare mouse developmental P4 datasets (gene name converted into human)
-mouse.dev.se <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Human.MouseDev.Merged.rds")
+mouse.dev.se <- readRDS(file.path(data_dir, "Human.MouseDev.Merged.rds"))
 
-### recalculate quality matrics for SCT normalization
+### recalculate quality metrics for SCT normalization
 mouse.dev.se$nCount_RNA <- Matrix::colSums(mouse.dev.se[["RNA"]]$counts)
 mouse.dev.se$nFeature_RNA <- Matrix::colSums(mouse.dev.se[["RNA"]]$counts > 0)
 mouse.dev.se[["percent.mito"]] <- PercentageFeatureSet(mouse.dev.se, pattern = "^MT-")
@@ -34,8 +41,9 @@ mouse.P4.list <- lapply(X = mouse.P4.list, FUN = function(x) {
 
 
 ### Prepare human annotated datasets 
-human.se <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Human.CeA.consensus.rds")
-### recalculate quality matrics for SCT normalization
+human.se <- readRDS(file.path(data_dir, "Human.CeA.consensus.rds"))
+
+### recalculate quality metrics for SCT normalization
 human.se$nCount_RNA <- Matrix::colSums(human.se[["RNA"]]$counts)
 human.se$nFeature_RNA <- Matrix::colSums(human.se[["RNA"]]$counts > 0)
 human.se[["percent.mito"]] <- PercentageFeatureSet(human.se, pattern = "^MT-")
@@ -70,12 +78,9 @@ human.P4.sct <- merge(
   y = human.P4.list[2:length(human.P4.list)]
 )
 
-
 # Exclude genes with "-AS" from a list
 filtered_genes <- grep("-AS", rownames(human.P4.sct), invert = TRUE, value = TRUE)
 human.P4.sct <- human.P4.sct[filtered_genes,]
-
-
 
 ### build summarized experiment objects and define inputs for MetaNeighbor
 hmP4.sample.id <- human.P4.sct$stage
@@ -84,8 +89,6 @@ hmP4.trajectory.id <- human.P4.sct$trajectories
 hmP4.assay.sct <- GetAssayData(human.P4.sct, assay = "SCT", layer = "data")    # SCT makes so much more sense than RNA assay
 hmP4.MN <- SummarizedExperiment(assays = hmP4.assay.sct)
 
-### save object
-#saveRDS(hmP4.MN, "h.mP4.SummarizedExp.rds")
 
 ######################################################### Function to test different gene set sizes on MetaNeighbor and extract AUROCs
 test_gene_set_size <- function(gene_set_sizes, SE_object, study_id, cell_type,
@@ -161,7 +164,7 @@ auroc_results <- test_gene_set_size(
   SE_object = hmP4.MN,
   study_id = hmP4.sample.id,
   cell_type = hmP4.trajectory.id,
-  n_repeats = 200  # more than 50 iterations yeild robust estimates 
+  n_repeats = 200  # more than 50 iterations yield robust estimates 
 )
 
 
@@ -186,18 +189,36 @@ Neuropeptide.genes <- c("ADCYAP1", "ADM",     "AGRP",    "AVP",     "BDNF",    "
  "POMC",    "PROK2",   "PTHLH",   "PTN",     "QRFP",    "RLN1",    "RSPO1",   "RSPO2",   "RXFP1",   "SST",     "TAC1",    "TAC3",   
  "TGFB3",   "TRH",     "TSHB",    "VIP",     "WNT2",    "WNT4",    "WNT5A",   "UCN3",    "CRHBP")  
 
-### Run null distributions for Semaphorins (19 genes) and Neuropeptides (57 genes)
+Semaphorin.genes <- intersect(Semaphorin.genes, rownames(hmP4.MN))
+Neuropeptide.genes <- intersect(Neuropeptide.genes, rownames(hmP4.MN))
+
+focused_gene_set_sizes <- c(length(Neuropeptide.genes), length(Semaphorin.genes))
+
+### Run null distributions for Semaphorins and Neuropeptides 
 Null.sema.neuropeptides <- test_gene_set_size(
-  gene_set_sizes = c(57, 19),
+  gene_set_sizes = focused_gene_set_sizes,
   SE_object = hmP4.MN,
   study_id = hmP4.sample.id,
   cell_type = hmP4.trajectory.id,
-  n_repeats = 1000  # more than 50 iterations yeild robust estimates 
+  n_repeats = 1000 # more than 50 iterations yield robust estimates 
 )
 
-### Getting null distributions for Semaphorins (19 genes) and Neuropeptides (57 genes)
-null_semaphorins <- Null.sema.neuropeptides$appetitive_AUROC[Null.sema.neuropeptides$gene_set_size == 19]
-null_neuropeptided <- Null.sema.neuropeptides$appetitive_AUROC[Null.sema.neuropeptides$gene_set_size == 57]
+null_sema_app <- Null.sema.neuropeptides$appetitive_AUROC[
+  Null.sema.neuropeptides$gene_set_size == length(Semaphorin.genes)
+]
+
+null_sema_ave <- Null.sema.neuropeptides$aversive_AUROC[
+  Null.sema.neuropeptides$gene_set_size == length(Semaphorin.genes)
+]
+
+null_neuropeptide_app <- Null.sema.neuropeptides$appetitive_AUROC[
+  Null.sema.neuropeptides$gene_set_size == length(Neuropeptide.genes)
+]
+
+null_neuropeptide_ave <- Null.sema.neuropeptides$aversive_AUROC[
+  Null.sema.neuropeptides$gene_set_size == length(Neuropeptide.genes)
+]
+
 
 ### Get semaphorin AUROC
 sema_auroc_app <- MetaNeighborUS(
@@ -208,7 +229,7 @@ sema_auroc_app <- MetaNeighborUS(
   symmetric_output = TRUE,
   one_vs_best = FALSE,
   fast_version = TRUE
-)["P4|Appetitve", "human|Appetitve"]
+)["P4|Appetitve", "human|Appetitve"] # Note the "Appetitve" typo
 
 sema_auroc_ave <- MetaNeighborUS(
   var_genes = Semaphorin.genes,
@@ -221,17 +242,27 @@ sema_auroc_ave <- MetaNeighborUS(
 )["P4|Aversive", "human|Aversive"]
 
 ### Compute Z-score
-(sema_auroc_ave - mean(null_semaphorins)) / sd(null_semaphorins)
-### Compute empirical p-value
-mean(null_semaphorins >= sema_auroc_ave)
+sema_z_app <- (
+  sema_auroc_app - mean(null_sema_app)
+) / sd(null_sema_app)
 
-### Visualization
-hist(null_semaphorins, breaks = 50, col = "grey", main = "Null AUROC Distribution (19 genes)",
+sema_z_ave <- (
+  sema_auroc_ave - mean(null_sema_ave)
+) / sd(null_sema_ave)
+
+
+### Compute empirical p-value
+mean(null_sema_app >= sema_auroc_app)
+mean(null_sema_ave >= sema_auroc_ave)
+
+### Visualization 
+# The appetitive and aversive null distributions have nearly identical means. Their AUROC values are pooled here only for compact visualization; 
+# all statistics and delta-AUROC values are calculated from the trajectory-specific null distributions.
+null_sema_all <- c(null_sema_app, null_sema_ave)
+hist(null_sema_all, breaks = 50, col = "gray80", main = "Null AUROC Distribution", 
      xlab = "AUROC", xlim = c(0.2, 0.9), freq = TRUE, density = 70)
-abline(v = mean(null_semaphorins), col = "gray50", lwd = 1)
 abline(v = sema_auroc_app, col = "#377EB8", lwd = 4)
 abline(v = sema_auroc_ave, col = "#E41A1C", lwd = 4)
-
 
 
 ### Get Neuropeptide AUROC
@@ -256,14 +287,25 @@ Neuropeptide_auroc_ave <- MetaNeighborUS(
 )["P4|Aversive", "human|Aversive"]
 
 # Compute Z-score
-(Neuropeptide_auroc_app - mean(null_neuropeptided)) / sd(null_neuropeptided)
+Neuropep_z_app <- (
+  Neuropeptide_auroc_app - mean(null_neuropeptide_app)
+) / sd(null_neuropeptide_app)
+
+Neuropep_z_ave <- (
+  Neuropeptide_auroc_ave - mean(null_neuropeptide_ave)
+) / sd(null_neuropeptide_ave)
+
+
 # Compute empirical p-value
-mean(null_neuropeptided >= Neuropeptide_auroc_app)
+mean(null_neuropeptide_app >= Neuropeptide_auroc_app)
+mean(null_neuropeptide_ave >= Neuropeptide_auroc_ave)
 
 ### Visualization
-hist(null_neuropeptided, breaks = 50, col = "grey", main = "Null AUROC Distribution (57 genes)",
+# The appetitive and aversive null distributions have nearly identical means. Their AUROC values are pooled here only for compact visualization; 
+# all statistics and delta-AUROC values are calculated from the trajectory-specific null distributions.
+null_neuropeptide_all <- c(null_neuropeptide_app, null_neuropeptide_ave)
+hist(null_neuropeptide_all, breaks = 50, col = "gray80", main = "Null AUROC Distribution", 
      xlab = "AUROC", xlim = c(0.2, 0.9), freq = TRUE, density = 70)
-abline(v = mean(null_neuropeptided), col = "gray50", lwd = 1)
 abline(v = Neuropeptide_auroc_app, col = "#377EB8", lwd = 4)
 abline(v = Neuropeptide_auroc_ave, col = "#E41A1C", lwd = 4)
 
@@ -271,13 +313,14 @@ abline(v = Neuropeptide_auroc_ave, col = "#E41A1C", lwd = 4)
 ################################################################## Prepare gene families for Human-mouse conserved gene family screening
 ### read gene families (same list as in Fig.3)
 library(readxl)
-### From knowledge based manually curated
-custom.data <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/Manually.Curated.Rinput.xlsx")
+### From knowledge-based manually curated
+custom.data <- readxl::read_excel(file.path(data_dir, "Manually.Curated.Rinput.xlsx"))
 custom.data <- lapply(custom.data, as.character)
 names(custom.data) <- make.names(names(custom.data))
 custom.data <- lapply(custom.data, function(x) x[!is.na(x)])
+
 ### From HGNC database
-HGNC.list <- read_excel("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.3/HGNC.Rinput.xlsx")
+HGNC.list <- readxl::read_excel(file.path(data_dir, "HGNC.Rinput.xlsx"))
 HGNC.list <- lapply(HGNC.list, as.character)
 names(HGNC.list) <- make.names(names(HGNC.list))
 HGNC.list <- lapply(HGNC.list, function(x) x[!is.na(x)])
@@ -285,8 +328,12 @@ HGNC.50.GeneList <- HGNC.list[sapply(HGNC.list, function(x) length(x) <= 50, sim
 
 #### transfer mouse to human gene names (Only needed once)
 if (!requireNamespace("homologene", quietly = TRUE)) {
-  install.packages("homologene")
+  stop(
+    "Package 'homologene' is required. ",
+    "Please install it before running this script."
+  )
 }
+
 library(homologene)
 
 map_mouse_to_human_genes <- function(mouse_genes) {
@@ -310,7 +357,7 @@ HGNC.data.human <- lapply(HGNC.50.GeneList, function(genes) {
 ### clean gene name list
 custom.data.human <- custom.data.human[!names(custom.data.human) %in% c("cytoskeleton.binding...8", "Calcium.channel.regulatory.subunits", "Semaphorins")]
 gene.family.all <- c(custom.data.human, HGNC.data.human)
-### If further duplecated, keep only the first occurrence of each name
+### If further duplicated, keep only the first occurrence of each name
 gene.family.all <- gene.family.all[!duplicated(names(gene.family.all))]
 
 
@@ -450,4 +497,5 @@ hmP4.z.results <- hmP4.z.results %>%
 hmP4.z.results <- hmP4.z.results %>%
   filter(gene_set != "Synaptotagmin")
 
-#write.csv(hmP4.z.results, "~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.6/Table5.dAUROC.CrossSpecies.csv")
+### optional: save the recalculated cross-species gene family decoding file
+#write.csv(hmP4.z.results, file = file.path(output_dir, "Table5.dAUROC.CrossSpecies.recalculated.csv"))

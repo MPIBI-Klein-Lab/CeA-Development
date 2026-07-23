@@ -1,13 +1,21 @@
+# This script documents the annotation of the integrated STICR–CeA dataset.
+#
+# The integrated Seurat object (STICR.CeA.Integrated.rds) already contains the finalized integration generated using Seurat's SCT/CCA workflow.
+# This script performs the downstream annotation and visualization used in the manuscript.
+
 library(Seurat)
 library(patchwork)
-library('harmony')
+library(harmony)
 library(RColorBrewer)
-library('metap')
-library("dplyr")
+library(metap)
+library(dplyr)
 library(ggplot2)
+library(here)
 
-################################################################################ read the STICR-CeA integrated dataset
-STICR.scCeA.inte <- readRDS("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/fig.2/STICR.CeA.Integrated.rds")
+data_dir <- here("data")
+
+### Load the archived STICR–CeA integrated Seurat object
+STICR.scCeA.inte <- readRDS(file.path(data_dir, "STICR.CeA.Integrated.rds"))
 
 ################################################################################ Checking the alignment of CeA-cell types between developmental dataset and STICR-CeA integrated clusters
 #### Integrated clusters were assigned as corresponding CeA types when more than 90% of cells originating from the annotated CeA developmental amygdala dataset belongs to the same integrated cluster (majority-vote assignment) 
@@ -83,9 +91,6 @@ inte.markrs.rna.wilcox <- FindAllMarkers(STICR.scCeA.inte, only.pos = TRUE, min.
 inte.markrs.rna.wilcox %>%
   group_by(cluster) %>%
   top_n(n = 20, wt = avg_log2FC) -> top20.rna.wilcox
-
-##### or import from saved file:
-#top20.rna.wilcox <- read.csv("~/Documents/backup_mac20250207/Dev_manuscript/data.submission/Bandler.CeA.markers.top20.csv")
 
 #### Visualization of expression
 agg.rna.data <- AggregateExpression(STICR.scCeA.inte, assays = "RNA", group.by = "ident", slot = "counts", return.seurat = TRUE) 

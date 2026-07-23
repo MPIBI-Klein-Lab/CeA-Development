@@ -295,7 +295,7 @@ GeneSetTestMatrix <- function(Geneset_list,  # A list of vectors, each vector is
       seu.obj$sampling <- sampling.list[ ,j]
       
       chance.df <- NM_run(genes = sel.genes[,j], seu.obj = seu.obj, seu.assay = seu.assay, seu.layer = seu.layer, do.sampling = FALSE)
-      chance.df$chance <- "TURE"
+      chance.df$chance <- "TRUE"
       chance.df$n_run <- j
       timecorse.df <- rbind(timecorse.df, chance.df)
       
@@ -311,7 +311,7 @@ GeneSetTestMatrix <- function(Geneset_list,  # A list of vectors, each vector is
     timecorse.df %>% group_by(cell_type, stage, chance) %>% summarise(mean = mean(scores)) %>% as.data.frame() -> timecorse.reshape
     
     timecorse.reshape <- reshape(timecorse.reshape, idvar = c("cell_type", "stage"), timevar = "chance", direction = "wide")
-    timecorse.reshape %>% mutate(dAUROC=mean.FALSE-mean.TURE) -> timecorse.reshape
+    timecorse.reshape %>% mutate(dAUROC=mean.FALSE-mean.TRUE) -> timecorse.reshape
     timecorse.reshape$stage <- factor(timecorse.reshape$stage, levels=c("E15", "E18", "P0", "P4", "P10", "P21"))
     timecorse.reshape %>% arrange(stage, .by_group = TRUE) -> timecorse.reshape
     
@@ -337,7 +337,7 @@ GeneSetTestMatrix <- function(Geneset_list,  # A list of vectors, each vector is
 
 
 
-####### Function that test a list of gene sets, return both the delta-AUROC scores and p-value comparing the paired gene set and randomly selected genes
+####### Function that test a list of gene sets, return both the delta-AUROC scores and p-value comparing the target gene set against its size-matched randomly selected genes
 ### CAUTION: it is important that if the seu.assay = "SCT", the default assay of the seurat object should also set to "SCT"
 ### This ensures the correct number of genes are calculated for random sampling of control genes
 
@@ -428,7 +428,7 @@ GeneSetTestMatrix2 <- function(Geneset_list,  # A list of vectors, each vector i
       seu.obj$sampling <- sampling.list[ ,j]
       
       chance.df <- NM_run(genes = sel.genes[,j], seu.obj = seu.obj, seu.assay = seu.assay, seu.layer = seu.layer, do.sampling = FALSE)
-      chance.df$chance <- "TURE"
+      chance.df$chance <- "TRUE"
       chance.df$n_run <- j
       timecorse.df <- rbind(timecorse.df, chance.df)
       
@@ -446,7 +446,7 @@ GeneSetTestMatrix2 <- function(Geneset_list,  # A list of vectors, each vector i
     timecorse.df %>% group_by(cell_type, stage, chance) %>% summarise(mean = mean(scores)) %>% as.data.frame() -> timecorse.reshape
     
     timecorse.reshape <- reshape(timecorse.reshape, idvar = c("cell_type", "stage"), timevar = "chance", direction = "wide")
-    timecorse.reshape %>% mutate(dAUROC=mean.FALSE-mean.TURE) -> timecorse.reshape
+    timecorse.reshape %>% mutate(dAUROC=mean.FALSE-mean.TRUE) -> timecorse.reshape
     timecorse.reshape$stage <- factor(timecorse.reshape$stage, levels=c("E15", "E18", "P0", "P4", "P10", "P21"))
     timecorse.reshape %>% arrange(stage, .by_group = TRUE) -> timecorse.reshape
     
