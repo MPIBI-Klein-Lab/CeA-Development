@@ -2,7 +2,13 @@
 
 This repository contains the scripts used to reproduce the analyses presented in:
 
+
 > **Developmental trajectories organize the assembly of valence circuits in the central amygdala**
+
+<p align="center">
+<img src="Figure_1/Fig1_overview.png" width="900">
+</p>
+
 
 The repository is organized by manuscript figures. Each figure folder contains plotting scripts and, where applicable, dedicated analysis scripts used to generate intermediate datasets and supplementary tables.
 
@@ -265,16 +271,10 @@ to verify the installation.
 | Adult CeA reference | Peters *et al.*, 2023 | GEO: GSE231790 |
 | STICR reference atlas | Bandler *et al.*, 2022 | GEO: GSE188528 |
 | Human CeA | Human Brain Cell Atlas | CELLxGENE collection |
-| Human–mouse integration | This repository | Zenodo DOI (coming soon) |
+| Human–mouse integrations | This repository | Zenodo DOI (coming soon) |
 | P21–Adult integration | This repository | Zenodo DOI (coming soon) |
 | CeA–STICR integration | This repository | Zenodo DOI (coming soon) |
 
 ---
 
-# Citation
 
-If you use this repository or the accompanying datasets, please cite:
-
-#> He S. *et al.*  
-#> **Developmental trajectories organize the assembly of valence circuits in the central amygdala.**
-#> bioRxiv (2026). DOI: (coming soon)
