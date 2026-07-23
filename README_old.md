@@ -144,3 +144,10 @@ STICR dataset	Bandler et al.,2022	GEO: GSExxxxx
 Human CeA	Human Brain Cell Atlas	CELLxGENE collection
 Integrated datasets	This repository / Zenodo	DOI: cooming soon
 
+# Citation
+
+If you use this repository or the accompanying datasets, please cite:
+
+> He S. *et al.*  
+> **Developmental trajectories organize the assembly of valence circuits in the central amygdala.**
+> bioRxiv (2026). DOI: (coming soon)

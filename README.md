@@ -5,9 +5,7 @@ This repository contains the scripts used to reproduce the analyses presented in
 
 > **Developmental trajectories organize the assembly of valence circuits in the central amygdala**
 
-<p align="center">
-<img src="Figure_1/Fig1_overview.png" width="900">
-</p>
+![Overview](assets/summary.png)
 
 
 The repository is organized by manuscript figures. Each figure folder contains plotting scripts and, where applicable, dedicated analysis scripts used to generate intermediate datasets and supplementary tables.
@@ -38,6 +36,8 @@ CeA-Development/
 ## Figure 1
 
 Early developmental specification of central amygdala neurons and reconstruction of developmental trajectories.
+
+![CeA developmental trajectories](assets/trajectory.png)
 
 ---
 
